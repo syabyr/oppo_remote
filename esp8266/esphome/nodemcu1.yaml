@@ -1,0 +1,66 @@
+substitutions:
+  devicename: "nodemcu1"
+
+esphome:
+  name: $devicename
+  build_path: build/$devicename
+  includes:
+    - uart_read_line_sensor.h
+
+esp8266:
+  board: nodemcuv2
+
+<<: !include secrets.yaml
+
+api:
+
+# Enable logging
+logger:
+  level: VERBOSE #makes uart stream available in esphome logstream
+  baud_rate: 0 #disable logging over uart
+
+uart:
+  id: uart_bus
+  tx_pin: GPIO1     #D10
+  rx_pin: GPIO3     #D9
+  baud_rate: 115200
+
+text_sensor:
+- platform: custom
+  lambda: |-
+    auto my_custom_sensor = new UartReadLineSensor(id(uart_bus));
+    App.register_component(my_custom_sensor);
+    return {my_custom_sensor};
+  text_sensors:
+    id: "uart_readline"
+
+
+output:
+  - platform: gpio
+    id: "blue_led"
+    pin: GPIO2
+
+
+switch:
+  - platform: output
+    id: "relay"
+    name: "${devicename} Relay"
+    output: "blue_led"
+
+
+binary_sensor:
+  - platform: gpio
+    name: "${devicename} Boot"
+    pin:
+      number: GPIO0
+      inverted: yes
+      mode:
+        input: true
+        pullup: true
+    on_press:
+      then:
+        - switch.toggle: "relay"
+    filters:
+      - delayed_on_off: 5ms
+
+
